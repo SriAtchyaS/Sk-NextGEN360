@@ -19,8 +19,7 @@ const NAV = {
   ],
   manager: [
     { label: "Dashboard",      icon: LayoutDashboard, to: "/manager" },
-    { label: "Add Question",   icon: BookOpen,        to: "/manager/add-question" },
-    { label: "Create Test",    icon: Brain,           to: "/manager/create-test" },
+    { label: "Assign Task",    icon: Plus,            to: "/manager/assign-task" },
   ],
   fresher: [
     { label: "Dashboard",  icon: LayoutDashboard, to: "/fresher" },
@@ -37,9 +36,12 @@ const ROLE_STYLE = {
 const ROLE_ICON = { admin: Shield, manager: UserCheck, fresher: Zap };
 
 // ─── AI Floating Assistant (Portal — always fixed to viewport) ────
-function AIAssistant({ role }) {
-  // Only show for fresher role
+function AIAssistant({ role, hiddenOnPaths = [] }) {
+  const location = window.location.pathname;
+
+  // Only show for fresher role and not on mock test page
   if (role !== "fresher") return null;
+  if (hiddenOnPaths.some(path => location.includes(path))) return null;
 
   const [open,    setOpen]    = useState(false);
   const [input,   setInput]   = useState("");
@@ -381,7 +383,7 @@ export default function Layout({ children }) {
 
       {/* AI Assistant — rendered via portal onto document.body
           This means it is ALWAYS fixed to the viewport corner, never affected by scroll */}
-      <AIAssistant role={user?.role} />
+      <AIAssistant role={user?.role} hiddenOnPaths={['/mock-test']} />
     </div>
   );
 }

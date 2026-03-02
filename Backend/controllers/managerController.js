@@ -105,3 +105,24 @@ exports.getMyFreshers = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Get freshers assigned to logged-in manager
+exports.getMyFreshers = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT id, name, email, department, manager_id
+       FROM users
+       WHERE role = 'fresher'
+       AND manager_id = $1`,
+      [managerId]
+    );
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};

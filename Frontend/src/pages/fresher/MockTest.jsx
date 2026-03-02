@@ -10,23 +10,31 @@ import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tool
 
 const PHASES = { ENTER: "enter", TESTING: "testing", RESULT: "result" };
 
-// ─── Phase 1: Enter Test ID ───────────────────────────────────────
+// ─── Phase 1: Enter Fresher Name and Topic ───────────────────────
 function EnterTestId({ onStart }) {
-  const [testId,  setTestId]  = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
+  const [fresherName, setFresherName] = useState("");
+  const [topic,       setTopic]       = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState("");
 
   const handleStart = async () => {
-    if (!testId.trim()) return setError("Please enter a Test ID");
+    if (!fresherName.trim()) return setError("Please enter your name");
+    if (!topic.trim()) return setError("Please enter the topic assigned to you");
+
     setLoading(true); setError("");
     try {
-      // GET /api/mock-test/start/:testId
-      const { data } = await mockTestAPI.start(testId);
-      if (!data || data.length === 0)
-        return setError("No questions found for this test. Ask your manager.");
-      onStart(testId, data);
+      // POST /api/mock-test/generate-quick-test
+      const { data } = await mockTestAPI.generateQuickTest({
+        fresher_name: fresherName,
+        topic: topic
+      });
+
+      if (!data.questions || data.questions.length === 0)
+        return setError("Could not generate questions. Try again.");
+
+      onStart(fresherName, data.questions);
     } catch (e) {
-      setError(e.response?.data?.error || "Test not found. Check the ID.");
+      setError(e.response?.data?.detail || "Failed to generate test. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -34,22 +42,27 @@ function EnterTestId({ onStart }) {
 
   return (
     <div className="max-w-md mx-auto mt-10">
-      <PageHeader title="Mock Test" subtitle="Enter the Test ID provided by your manager" />
+      <PageHeader title="Mock Test" subtitle="Enter your name and the topic assigned to you" />
       <Card>
         <div className="p-6 space-y-4">
           <Input
-            label="Test ID"
-            value={testId}
-            onChange={e => setTestId(e.target.value)}
-            placeholder="e.g. 1, 2, 3 ..."
-            type="number"
+            label="Your Name"
+            value={fresherName}
+            onChange={e => setFresherName(e.target.value)}
+            placeholder="e.g. John Doe"
+          />
+          <Input
+            label="Topic Assigned to You"
+            value={topic}
+            onChange={e => setTopic(e.target.value)}
+            placeholder="e.g. React Fundamentals"
           />
           {error && <Alert type="error" message={error} />}
           <Btn onClick={handleStart} disabled={loading} className="w-full" icon={Brain}>
-            {loading ? "Loading Questions…" : "Start Test"}
+            {loading ? "Generating 10 Questions with AI…" : "Generate Test"}
           </Btn>
           <p className="text-xs text-slate-400 text-center">
-            10 random questions will be selected from the test bank
+            AI will generate 10 questions based on your topic
           </p>
         </div>
       </Card>
@@ -58,9 +71,9 @@ function EnterTestId({ onStart }) {
 }
 
 // ─── Phase 2: Take Test ───────────────────────────────────────────
-function TakeTest({ testId, questions, onSubmit }) {
+function TakeTest({ fresherName, questions, onSubmit }) {
   const [current,  setCurrent]  = useState(0);
-  const [answers,  setAnswers]  = useState({});   // { questionId: "A"|"B"|"C"|"D" }
+  const [answers,  setAnswers]  = useState({});   // { questionIndex: "A"|"B"|"C"|"D" }
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
 
@@ -74,35 +87,39 @@ function TakeTest({ testId, questions, onSubmit }) {
   ];
 
   const select = (key) => {
-    setAnswers(prev => ({ ...prev, [q.id]: key }));
+    setAnswers(prev => ({ ...prev, [current]: key }));
   };
 
   const handleSubmit = async () => {
     setLoading(true); setError("");
-    // POST /api/mock-test/submit
-    // body: { testId, answers: [{ questionId, selected }] }
-    const payload = Object.entries(answers).map(([qId, selected]) => ({
-      questionId: parseInt(qId),
-      selected,
-    }));
-    try {
-      const { data } = await mockTestAPI.submit({ testId: parseInt(testId), answers: payload });
-      onSubmit(data, answers, questions);
-    } catch (e) {
-      setError(e.response?.data?.error || "Submission failed");
-      setLoading(false);
-    }
+
+    // Calculate score locally since we have the correct answers
+    let score = 0;
+    questions.forEach((q, index) => {
+      if (answers[index] === q.correct_answer) {
+        score++;
+      }
+    });
+
+    const finalScore = (score / total) * 100;
+    const result = {
+      score: finalScore,
+      totalQuestions: total,
+      correctAnswers: score
+    };
+
+    onSubmit(result);
   };
 
   const answered = Object.keys(answers).length;
-  const selected = answers[q?.id];
+  const selected = answers[current];
 
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mock Test #{testId}</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mock Test - {fresherName}</p>
           <h2 className="text-lg font-bold text-slate-900">Question {current + 1} of {total}</h2>
         </div>
         <div className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-xl font-mono font-bold text-sm">
@@ -126,7 +143,7 @@ function TakeTest({ testId, questions, onSubmit }) {
             className={`w-8 h-8 rounded-lg text-xs font-bold transition-all
               ${i === current
                 ? "bg-indigo-600 text-white"
-                : answers[questions[i].id]
+                : answers[i]
                   ? "bg-emerald-100 text-emerald-700"
                   : "bg-slate-100 text-slate-400 hover:bg-slate-200"
               }`}>
@@ -301,98 +318,15 @@ function Result({ result, onRetry }) {
   );
 }
 
-// ─── AI Floating Assistant ────────────────────────────────────────
-function AIAssistant() {
-  const [open,    setOpen]   = useState(false);
-  const [msgs,    setMsgs]   = useState([
-    { from:"ai", text:"Hi! I'm your AI learning assistant powered by Gemini. Ask me anything about your studies!" }
-  ]);
-  const [input,   setInput]  = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const send = async () => {
-    if (!input.trim()) return;
-    const userMsg = input;
-    setInput("");
-    setMsgs(m => [...m, { from:"user", text: userMsg }]);
-    setLoading(true);
-    try {
-      // POST /api/ai/ask
-      const { data } = await aiAPI.ask(userMsg);
-      setMsgs(m => [...m, { from:"ai", text: data.reply }]);
-    } catch {
-      setMsgs(m => [...m, { from:"ai", text:"Sorry, I couldn't connect to the AI right now." }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <>
-      {open && (
-        <div className="fixed bottom-24 right-6 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-              <Flame size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="text-white text-sm font-bold">Gemini AI Assistant</p>
-              <p className="text-indigo-200 text-xs">Always here to help</p>
-            </div>
-          </div>
-          {/* Messages */}
-          <div className="h-60 overflow-y-auto p-4 space-y-3">
-            {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed
-                  ${m.from === "user"
-                    ? "bg-indigo-600 text-white rounded-br-sm"
-                    : "bg-slate-100 text-slate-700 rounded-bl-sm"}`}>
-                  {m.text}
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-slate-100 px-3 py-2 rounded-xl text-sm text-slate-400">Thinking…</div>
-              </div>
-            )}
-          </div>
-          {/* Input */}
-          <div className="px-3 py-2 border-t border-slate-100 flex gap-2">
-            <input
-              value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && send()}
-              placeholder="Ask anything…"
-              className="flex-1 text-sm px-3 py-2 bg-slate-50 rounded-xl focus:outline-none focus:bg-slate-100"
-            />
-            <button onClick={send}
-              className="px-3 py-2 bg-indigo-600 rounded-xl text-white hover:bg-indigo-700 transition-colors">
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-      <button
-        onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl flex items-center justify-center text-white z-50 hover:scale-105 transition-transform"
-        style={{ background:"linear-gradient(135deg,#6366f1,#7c3aed)", boxShadow:"0 8px 32px rgba(99,102,241,0.45)" }}>
-        {open ? "✕" : <Flame size={22} />}
-      </button>
-    </>
-  );
-}
-
 // ─── Main Export ──────────────────────────────────────────────────
 export default function MockTest() {
-  const [phase,     setPhase]     = useState(PHASES.ENTER);
-  const [testId,    setTestId]    = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [result,    setResult]    = useState(null);
+  const [phase,       setPhase]       = useState(PHASES.ENTER);
+  const [fresherName, setFresherName] = useState(null);
+  const [questions,   setQuestions]   = useState([]);
+  const [result,      setResult]      = useState(null);
 
-  const handleStart = (id, qs) => {
-    setTestId(id);
+  const handleStart = (name, qs) => {
+    setFresherName(name);
     setQuestions(qs);
     setPhase(PHASES.TESTING);
   };
@@ -406,14 +340,14 @@ export default function MockTest() {
     setPhase(PHASES.ENTER);
     setResult(null);
     setQuestions([]);
+    setFresherName(null);
   };
 
   return (
     <div>
       {phase === PHASES.ENTER   && <EnterTestId onStart={handleStart} />}
-      {phase === PHASES.TESTING && <TakeTest testId={testId} questions={questions} onSubmit={handleSubmit} />}
+      {phase === PHASES.TESTING && <TakeTest fresherName={fresherName} questions={questions} onSubmit={handleSubmit} />}
       {phase === PHASES.RESULT  && <Result result={result} onRetry={handleRetry} />}
-      <AIAssistant />
     </div>
   );
 }

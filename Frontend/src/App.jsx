@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/layout/Layout";
 
 // Auth
-import Login from "./pages/auth/Login";
+import Login from "./pages/auth/LoginNew";
 
 // Admin
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -12,8 +12,7 @@ import CreateUser     from "./pages/admin/CreateUser";
 
 // Manager
 import ManagerDashboard from "./pages/manager/Dashboard";
-import AddQuestion      from "./pages/manager/AddQuestion";
-import CreateTest       from "./pages/manager/CreateTest";
+import AssignTask       from "./pages/manager/AssignTask";
 
 // Fresher
 import FresherDashboard from "./pages/fresher/Dashboard";
@@ -51,8 +50,7 @@ export default function App() {
 
           {/* Manager */}
           <Route path="/manager"              element={<ProtectedRoute roles={["manager"]}><ManagerDashboard /></ProtectedRoute>} />
-          <Route path="/manager/add-question" element={<ProtectedRoute roles={["manager"]}><AddQuestion      /></ProtectedRoute>} />
-          <Route path="/manager/create-test"  element={<ProtectedRoute roles={["manager"]}><CreateTest       /></ProtectedRoute>} />
+          <Route path="/manager/assign-task"  element={<ProtectedRoute roles={["manager"]}><AssignTask       /></ProtectedRoute>} />
 
           {/* Fresher */}
           <Route path="/fresher"            element={<ProtectedRoute roles={["fresher"]}><FresherDashboard /></ProtectedRoute>} />

@@ -1,0 +1,191 @@
+╔══════════════════════════════════════════════════════════════╗
+║           SK NextGen 360 - Quick Start Guide                 ║
+║                  Python + React Login                        ║
+╚══════════════════════════════════════════════════════════════╝
+
+📍 STEP 1: Start Python Backend
+─────────────────────────────────────────────────────────────
+   cd python_app
+   python run.py
+
+   ✓ Wait for: "Application starting on port 5000"
+   ✓ API Docs: http://localhost:5000/docs
+
+
+📍 STEP 2: Start React Frontend (NEW TERMINAL)
+─────────────────────────────────────────────────────────────
+   cd Frontend
+   npm start
+
+   ✓ Browser opens: http://localhost:3000/login
+
+
+📍 STEP 3: Login
+─────────────────────────────────────────────────────────────
+   Email:    admin@test.com
+   Password: 123456
+
+   ✓ Click "Sign In"
+   ✓ Redirects to: /admin dashboard
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                    WHAT I FIXED                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ Converted Node.js backend → Python/FastAPI
+✅ Fixed bcrypt authentication
+✅ Updated frontend API endpoints (3 fixes)
+✅ Unified login for all users
+✅ JWT authentication working
+✅ All endpoints connected
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                  TEST ACCOUNTS                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+👤 Admin
+   Email: admin@test.com
+   Pass:  123456
+   Role:  Full access
+
+👤 Manager
+   Email: datamanager@test.com
+   Role:  Manage freshers
+
+👤 Fresher
+   Email: fresher@test.com
+   Role:  Learning & tasks
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                 TROUBLESHOOTING                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+❌ Backend not starting?
+   → Check port 5000 not in use
+   → Run: netstat -ano | findstr :5000
+
+❌ Login fails?
+   → Verify backend running: curl http://localhost:5000/test
+   → Test login: python test_login.py
+   → Use correct credentials
+
+❌ Network error?
+   → Backend must be running FIRST
+   → Check http://localhost:5000/docs opens
+
+❌ CORS error?
+   → Already configured, shouldn't happen
+   → Make sure using http:// not just localhost
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                    FILE LOCATIONS                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+📂 Project Structure:
+   ├── python_app/              ← Python backend
+   │   ├── app/
+   │   │   ├── main.py          ← FastAPI app
+   │   │   ├── routers/         ← API endpoints
+   │   │   └── auth/            ← JWT authentication
+   │   ├── run.py               ← Start server
+   │   ├── test_login.py        ← Test credentials
+   │   └── test_api.py          ← Test endpoints
+   │
+   ├── Frontend/                ← React app
+   │   ├── src/
+   │   │   ├── pages/auth/Login.jsx
+   │   │   ├── services/api.js  ← API calls (FIXED ✅)
+   │   │   └── context/AuthContext.jsx
+   │   └── package.json
+   │
+   └── FRONTEND_LOGIN_GUIDE.md  ← Detailed guide
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                   DOCUMENTATION                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+📖 Quick Guides:
+   • QUICK_START.txt (this file)
+   • FRONTEND_LOGIN_GUIDE.md
+
+📖 Detailed Docs:
+   • python_app/START_HERE.md
+   • python_app/FRONTEND_INTEGRATION.md
+   • python_app/LOGIN_CREDENTIALS.md
+   • python_app/DEPLOYMENT.md
+   • python_app/README.md
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                   TEST COMMANDS                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+# Test if backend is running
+curl http://localhost:5000/test
+
+# Test database connection & users
+cd python_app
+python test_login.py
+
+# Test API endpoints (requires backend running)
+cd python_app
+python test_api.py
+
+# View API documentation
+Open: http://localhost:5000/docs
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                  DEPLOYMENT READY                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+🐳 Docker (Recommended):
+   cd python_app
+   docker-compose up -d
+
+📦 Production:
+   cd Frontend
+   npm run build
+   xcopy /E /I build\* ..\python_app\app\static\
+   cd ..\python_app
+   docker-compose up -d
+
+☁️ Cloud Platforms:
+   • AWS ECS/Fargate
+   • Google Cloud Run
+   • Azure Container Instances
+   • Heroku
+   • Digital Ocean
+
+   See: python_app/DEPLOYMENT.md
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                   SUPPORT                                    ║
+╚══════════════════════════════════════════════════════════════╝
+
+🔗 API Documentation:
+   http://localhost:5000/docs
+
+🔧 Test Scripts:
+   python test_login.py    ← Check users/passwords
+   python test_api.py      ← Test endpoints
+
+📝 Guides:
+   See all .md files in python_app/
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                  EVERYTHING READY!                           ║
+║                                                              ║
+║  1. Start backend:  cd python_app && python run.py          ║
+║  2. Start frontend: cd Frontend && npm start                ║
+║  3. Login: admin@test.com / 123456                          ║
+║                                                              ║
+║               🚀 YOUR APP IS READY! 🚀                       ║
+╚══════════════════════════════════════════════════════════════╝

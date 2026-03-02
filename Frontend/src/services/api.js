@@ -42,11 +42,14 @@ export const authAPI = {
 // POST /api/fresher/calculate-score
 // POST /api/fresher/submit-simulation { simulation_id, submission_url }
 export const fresherAPI = {
-  getMyTasks:         ()     => api.get("/fresher/tasks"),
+  getMyTasks:         ()     => api.get("/fresher/my-tasks"),
   startTopic:         (data) => api.post("/fresher/start-topic", data),
   completeTopic:      (data) => api.post("/fresher/complete-topic", data),
   calculateScore:     ()     => api.post("/fresher/calculate-score"),
   submitSimulation:   (data) => api.post("/fresher/submit-simulation", data),
+
+  // New task completion endpoint
+  completeTask: (taskId) => api.post(`/fresher/complete-task/${taskId}`),
 };
 
 // ─── Mock Test  →  /api/mock-test ────────────────────────────────
@@ -55,19 +58,22 @@ export const fresherAPI = {
 // POST /api/mock-test/submit   { testId, answers[] }      → { score }
 export const mockTestAPI = {
   create: (data)   => api.post("/mock-test/create", data),
-  start:  (testId) => api.get(`/mock-test/start/${testId}`),
+  start:  (testId) => api.get(`/mock-test/${testId}/start`),
   submit: (data)   => api.post("/mock-test/submit", data),
+
+  // New task-based mock test endpoints
+  startByTask: (taskId) => api.get(`/mock-test/start-by-task/${taskId}`),
+  generateForTask: (taskId) => api.post("/mock-test/generate-for-task", { task_id: taskId }),
+
+  // Generate quick test for fresher with name and topic
+  generateQuickTest: (data) => api.post("/mock-test/generate-quick-test", data),
 };
 
 // ─── Manager  →  /api/manager ────────────────────────────────────
 // POST /api/manager/add-question   { department, question, option_a..d, correct_option }
 // GET  /api/manager/random-questions?department=Engineering
 // POST /api/manager/submit-test    { answers[{ question_id, selected }] }
-export const managerAPI = {
-  addQuestion:      (data)       => api.post("/manager/add-question", data),
-  getRandomQuestions: (dept)     => api.get(`/manager/random-questions?department=${dept}`),
-  submitTest:       (data)       => api.post("/manager/submit-test", data),
-};
+
 
 // ─── Admin  →  /api/admin ────────────────────────────────────────
 // POST /api/admin/create-user  { name, email, password, role, department, manager_id }
@@ -82,7 +88,7 @@ export const adminAPI = {
 // ─── Tasks  →  /api/tasks ────────────────────────────────────────
 // PUT /api/tasks/complete/:taskId
 export const taskAPI = {
-  markComplete: (taskId) => api.put(`/tasks/complete/${taskId}`),
+  markComplete: (taskId) => api.post(`/tasks/${taskId}/complete`),
 };
 
 // ─── AI  →  /api/ai ──────────────────────────────────────────────
@@ -104,6 +110,8 @@ export const managerFresherAPI = {
   getMyFreshers: () => api.get("/admin/users"),
 };
 
+
+
 // ─── Review Session (email scheduling) ───────────────────────────
 // POST /api/ai/ask used to send review request context
 // The actual email is triggered via backend task completion
@@ -112,4 +120,24 @@ export const reviewAPI = {
   scheduleReview: (data) => api.post("/ai/ask", {
     prompt: `[REVIEW_REQUEST] Fresher: ${data.fresherName}, Manager Email: ${data.managerEmail}, Requested Date: ${data.date}, Message: ${data.message}`
   }),
+};
+
+export const managerAPI = {
+  addQuestion: (data) => api.post("/manager/add-question", data),
+
+  getRandomQuestions: (department) =>
+    api.get(`/manager/random-questions?department=${department}`),
+
+  submitTest: (data) => api.post("/manager/submit-test", data),
+
+  getMyFreshers: () => api.get("/manager/my-freshers"),
+
+  // New task assignment endpoints
+  assignTask: (formData) => api.post("/manager/assign-task", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  getAssignedTasks: () => api.get("/manager/assigned-tasks"),
+
+  generateMockTest: (taskId) => api.post("/mock-test/generate-for-task", { task_id: taskId }),
 };

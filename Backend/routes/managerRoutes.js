@@ -36,3 +36,4 @@ router.get(
   authorizeRoles("manager"),
   managerController.getMyFreshers
 );
+

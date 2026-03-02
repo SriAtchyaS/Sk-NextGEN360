@@ -116,12 +116,12 @@ export default function FresherDashboard() {
 
   const handleComplete = async (taskId) => {
     try {
-      await taskAPI.markComplete(taskId);
+      await fresherAPI.completeTask(taskId);
       setSuccess("Task marked as completed!");
       fetchTasks();
       setTimeout(() => setSuccess(""), 3000);
     } catch (e) {
-      setError(e.response?.data?.error || "Failed to complete task");
+      setError(e.response?.data?.detail || "Failed to complete task");
       setTimeout(() => setError(""), 3000);
     }
   };
@@ -137,8 +137,8 @@ export default function FresherDashboard() {
     }
   };
 
-  const completed = tasks.filter(t => t.completed);
-  const pending   = tasks.filter(t => !t.completed);
+  const completed = tasks.filter(t => t.status === 'completed');
+  const pending   = tasks.filter(t => t.status === 'pending');
   const pct       = tasks.length ? Math.round((completed.length / tasks.length) * 100) : 0;
 
   const readiness =
@@ -195,31 +195,43 @@ export default function FresherDashboard() {
               <div className="px-5 pb-2">
                 {tasks.map(task => (
                   <div key={task.id}
-                    className="flex items-center gap-4 py-3.5 border-b border-slate-50 last:border-0">
+                    onClick={() => navigate("/fresher/tasks")}
+                    className="flex items-center gap-4 py-3.5 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50 rounded-lg px-3 -mx-3 transition-colors">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                      ${task.completed ? "bg-emerald-50" : "bg-amber-50"}`}>
-                      {task.completed
+                      ${task.status === 'completed' ? "bg-emerald-50" : "bg-amber-50"}`}>
+                      {task.status === 'completed'
                         ? <CheckCircle2 size={16} className="text-emerald-500" />
                         : <Clock        size={16} className="text-amber-500"   />
                       }
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 truncate">
-                        {task.title || `Task #${task.id}`}
+                        {task.topic || `Task #${task.id}`}
                       </p>
-                      {task.description && (
-                        <p className="text-xs text-slate-400 truncate mt-0.5">{task.description}</p>
-                      )}
-                      {task.topic_id && (
-                        <p className="text-xs text-indigo-500 mt-0.5">Topic #{task.topic_id}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Assigned by: {task.manager_name}
+                      </p>
+                      {task.subtopics && task.subtopics.length > 0 && (
+                        <p className="text-xs text-indigo-500 mt-0.5">{task.subtopics.length} subtopics</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <Badge label={task.completed ? "Done" : "Pending"}
-                        color={task.completed ? "emerald" : "amber"} />
-                      {!task.completed && (
-                        <Btn size="sm" variant="success" onClick={() => handleComplete(task.id)}>
+                      <Badge label={task.status === 'completed' ? "Completed" : "Pending"}
+                        color={task.status === 'completed' ? "emerald" : "amber"} />
+                      {task.status === 'pending' && (
+                        <Btn size="sm" variant="success" onClick={(e) => {
+                          e.stopPropagation();
+                          handleComplete(task.id);
+                        }}>
                           Complete
+                        </Btn>
+                      )}
+                      {task.status === 'completed' && !task.mock_test_completed && (
+                        <Btn size="sm" variant="primary" onClick={(e) => {
+                          e.stopPropagation();
+                          navigate("/fresher/mock-test");
+                        }}>
+                          Test
                         </Btn>
                       )}
                     </div>

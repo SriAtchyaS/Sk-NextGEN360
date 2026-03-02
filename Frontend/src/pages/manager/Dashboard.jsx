@@ -1,213 +1,227 @@
 import { useState, useEffect } from "react";
-import {
-  BookOpen, Brain, Users, ChevronRight,
-  CheckCircle2, Clock, TrendingUp, RefreshCw, Info
-} from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
-import {
-  StatCard, Card, Btn, PageHeader, Avatar,
-  ProgressBar, ReadinessChip, Spinner, Alert
-} from "../../components/common";
-import { adminAPI } from "../../services/api";
+import { Users, ClipboardList, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import api from "../../services/api";
+import { Link } from "react-router-dom";
 
-// ─── Fresher Row ──────────────────────────────────────────────────
-function FresherRow({ fresher }) {
-  return (
-    <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors">
-      <Avatar name={fresher.name} size="lg" />
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-bold text-slate-800">{fresher.name}</p>
-          <ReadinessChip level="In Progress" />
-        </div>
-        <p className="text-xs text-slate-400 mt-0.5">{fresher.email}</p>
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {fresher.department && (
-            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg font-medium">
-              {fresher.department}
-            </span>
-          )}
-          <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-lg font-medium">
-            Fresher #{fresher.id}
-          </span>
-        </div>
-      </div>
-
-      {/* Progress — tasks not returned by /admin/users endpoint yet */}
-      <div className="w-36 hidden sm:block flex-shrink-0">
-        <div className="flex justify-between text-xs mb-1">
-          <span className="text-slate-400">Progress</span>
-          <span className="text-slate-500 font-semibold">—</span>
-        </div>
-        <ProgressBar value={0} max={100} color="indigo" showPercent={false} />
-        <p className="text-xs text-slate-400 mt-1">Tasks not yet loaded</p>
-      </div>
-
-      <div className="text-center hidden md:block flex-shrink-0 w-20">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mgr ID</p>
-        <p className="text-sm font-bold text-indigo-600 mt-0.5">{fresher.manager_id}</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Manager Dashboard ────────────────────────────────────────────
 export default function ManagerDashboard() {
-  const { user }  = useAuth();
-  const navigate  = useNavigate();
+  const [freshers, setFreshers] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalFreshers: 0,
+    totalTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0
+  });
 
-  const [allUsers,  setAllUsers]  = useState([]);
-  const [freshers,  setFreshers]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState("");
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  useEffect(() => { fetchFreshers(); }, []);
-
-  const fetchFreshers = async () => {
-    setLoading(true); setError("");
+  const fetchData = async () => {
     try {
-      // GET /api/admin/users → [{ id, name, email, role, department, manager_id }]
-      const { data } = await adminAPI.getAllUsers();
-      setAllUsers(data);
+      const [freshersRes, tasksRes] = await Promise.all([
+        api.get("/manager/my-freshers"),
+        api.get("/manager/assigned-tasks")
+      ]);
 
-      // user.id is decoded from JWT in AuthContext (numeric DB id)
-      // manager_id in DB is integer — use == to safely compare even if one is string
-      const managerId = user?.id;
-      // eslint-disable-next-line eqeqeq
-      const myFreshers = data.filter(u => u.role === "fresher" && u.manager_id == managerId);
-      setFreshers(myFreshers);
-    } catch (e) {
-      setError(e.response?.data?.error || "Failed to load users");
+      setFreshers(freshersRes.data);
+      setTasks(tasksRes.data);
+
+      // Calculate stats
+      setStats({
+        totalFreshers: freshersRes.data.length,
+        totalTasks: tasksRes.data.length,
+        completedTasks: tasksRes.data.filter(t => t.status === 'completed').length,
+        pendingTasks: tasksRes.data.filter(t => t.status === 'pending').length
+      });
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const totalFreshers = freshers.length;
-
-  const ACTIONS = [
-    { title: "Add Question",    desc: "Add MCQ to the question bank for freshers",    icon: BookOpen, color: "indigo", to: "/manager/add-question" },
-    { title: "Create Mock Test", desc: "Build a 20-question AI-powered mock test",    icon: Brain,    color: "violet", to: "/manager/create-test"  },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <PageHeader
-        title={`Hello, ${user?.name?.split(" ")[0] || "Manager"} 👋`}
-        subtitle="Manage your freshers, questions and tests"
-      />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="My Freshers"  value={totalFreshers}        icon={Users}        color="indigo" />
-        <StatCard label="Your ID"      value={`#${user?.id ?? "?"}`} icon={CheckCircle2} color="emerald" sub="Share with Admin" />
-        <StatCard label="In Progress"  value={totalFreshers}        icon={Clock}        color="amber"  />
-        <StatCard label="Total Users"  value={allUsers.length}      icon={TrendingUp}   color="violet" />
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Manager Dashboard</h1>
+        <p className="text-gray-600 mt-1">Manage your freshers and track their progress</p>
       </div>
 
-      {/* Freshers table */}
-      <Card
-        title="Freshers Assigned to Me"
-        className="mb-6"
-        action={
-          <Btn variant="ghost" size="sm" icon={RefreshCw} onClick={fetchFreshers}>
-            Refresh
-          </Btn>
-        }
-      >
-        {loading ? (
-          <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-
-        ) : error ? (
-          <div className="p-5"><Alert type="error" message={error} /></div>
-
-        ) : freshers.length === 0 ? (
-          <div className="py-12 px-6 text-center">
-            <div className="text-5xl mb-3">👥</div>
-            <p className="font-bold text-slate-700 text-base">No freshers assigned to you yet</p>
-            <p className="text-sm text-slate-400 mt-1 leading-relaxed max-w-sm mx-auto">
-              Ask your Admin to create fresher accounts with{" "}
-              <strong className="text-slate-600">Manager ID = {user?.id ?? "?"}</strong>
-            </p>
-
-            {/* Helper badge */}
-            <div className="mt-5 inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-5 py-2.5 rounded-2xl text-sm font-semibold">
-              <Info size={16} />
-              Your Manager ID is&nbsp;<span className="text-xl font-black">#{user?.id ?? "?"}</span>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium">Total Freshers</p>
+              <h3 className="text-3xl font-bold mt-2">{stats.totalFreshers}</h3>
             </div>
-
-            {/* Debug — helps verify the filter is working */}
-            <div className="mt-4 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-mono inline-block">
-              Filtering: role=fresher AND manager_id = {user?.id ?? "null"}
-              &nbsp;·&nbsp;Total users in DB: {allUsers.length}
-              &nbsp;·&nbsp;Freshers found: {allUsers.filter(u => u.role === "fresher").length}
+            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <Users size={24} />
             </div>
           </div>
+        </div>
 
-        ) : (
-          <>
-            {/* Table header */}
-            <div className="hidden sm:flex items-center gap-4 px-5 py-2.5 border-b border-slate-100 bg-slate-50/60 mt-2">
-              <div className="flex-1">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fresher</p>
-              </div>
-              <div className="w-36">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Progress</p>
-              </div>
-              <div className="w-20 text-center">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mgr ID</p>
-              </div>
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium">Total Tasks</p>
+              <h3 className="text-3xl font-bold mt-2">{stats.totalTasks}</h3>
             </div>
-            {freshers.map(f => <FresherRow key={f.id} fresher={f} />)}
-            <div className="px-5 py-3 border-t border-slate-50 text-xs text-slate-400">
-              {totalFreshers} fresher{totalFreshers !== 1 ? "s" : ""} assigned to you
+            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <ClipboardList size={24} />
             </div>
-          </>
-        )}
-      </Card>
+          </div>
+        </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {ACTIONS.map(a => {
-          const gcs = { indigo: "from-indigo-500 to-indigo-600", violet: "from-violet-500 to-violet-600" };
-          return (
-            <button key={a.to} onClick={() => navigate(a.to)}
-              className="group bg-white border border-slate-100 rounded-2xl p-6 text-left hover:border-indigo-200 hover:shadow-lg transition-all duration-200"
-              style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.05),0 8px 24px rgba(0,0,0,0.04)" }}>
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gcs[a.color]} flex items-center justify-center shadow-lg`}>
-                  <a.icon size={22} className="text-white" />
-                </div>
-                <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-500 transition-colors mt-1" />
-              </div>
-              <h3 className="font-bold text-slate-800 text-base group-hover:text-indigo-700 transition-colors">{a.title}</h3>
-              <p className="text-sm text-slate-400 mt-1 leading-relaxed">{a.desc}</p>
-            </button>
-          );
-        })}
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium">Completed</p>
+              <h3 className="text-3xl font-bold mt-2">{stats.completedTasks}</h3>
+            </div>
+            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <CheckCircle size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-100 text-sm font-medium">Pending</p>
+              <h3 className="text-3xl font-bold mt-2">{stats.pendingTasks}</h3>
+            </div>
+            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <Clock size={24} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Guide */}
-      <Card title="Manager Workflow Guide">
-        <div className="p-5 space-y-3">
-          {[
-            { step: "1", text: `Your Manager ID is #${user?.id ?? "?"}. Tell your Admin this when creating fresher accounts` },
-            { step: "2", text: "Once freshers are created with your Manager ID, they will appear in the table above" },
-            { step: "3", text: "Add MCQ questions to the question bank using 'Add Question'" },
-            { step: "4", text: "Create a 20-question mock test and share the Test ID with your freshers" },
-            { step: "5", text: "Review requests from freshers arrive via email — they can schedule from their dashboard" },
-          ].map(s => (
-            <div key={s.step} className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                {s.step}
-              </div>
-              <p className="text-sm text-slate-600 leading-relaxed">{s.text}</p>
-            </div>
-          ))}
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Link
+          to="/manager/assign-task"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          <ClipboardList size={20} />
+          Assign New Task
+        </Link>
+      </div>
+
+      {/* Freshers List */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Users size={20} className="text-indigo-600" />
+            My Freshers
+          </h2>
         </div>
-      </Card>
+        <div className="overflow-x-auto">
+          {freshers.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <Users size={48} className="mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-600">No freshers assigned yet</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Department</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tasks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {freshers.map((fresher) => {
+                  const fresherTasks = tasks.filter(t => t.fresher_email === fresher.email);
+                  const completedCount = fresherTasks.filter(t => t.status === 'completed').length;
+
+                  return (
+                    <tr key={fresher.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                            {fresher.name.charAt(0)}
+                          </div>
+                          <span className="font-medium text-gray-900">{fresher.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{fresher.email}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                          {fresher.department}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {completedCount}/{fresherTasks.length}
+                          </span>
+                          <span className="text-xs text-gray-500">completed</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Tasks */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <TrendingUp size={20} className="text-indigo-600" />
+            Recent Tasks
+          </h2>
+        </div>
+        <div className="p-6">
+          {tasks.length === 0 ? (
+            <div className="text-center py-8">
+              <ClipboardList size={48} className="mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-600">No tasks assigned yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.slice(0, 5).map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-indigo-300 transition-colors"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{task.topic}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{task.fresher_name}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      task.status === 'completed'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {task.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
